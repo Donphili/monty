@@ -1,103 +1,128 @@
 #include "monty.h"
 
-global_t vglo;
-
 /**
- * free_vglo - frees the global variables
- *
- * Return: no return
- */
-void free_vglo(void)
+* stack_queue - sets to either stack or queue
+* @stack:starting of stack
+* @line_number: line number
+*/
+void stack_queue(stack_t **stack, unsigned int line_number)
 {
-	free_dlistint(vglo.head);
-	free(vglo.buffer);
-	fclose(vglo.fd);
+	(void)stack;
+	(void)line_number;
+
+	if (strcmp(cmd, "queue") == 0)
+		mode = 1;
+	else
+		mode = 0;
 }
-
 /**
- * start_vglo - initializes the global variables
- *
- * @fd: file descriptor
- * Return: no return
- */
-void start_vglo(FILE *fd)
+* get_func - gets function required
+* @opcode: opcode from instruction
+* Return: pointer to function
+*/
+void (*get_func(char *opcode))(stack_t**, unsigned int)
 {
-	vglo.lifo = 1;
-	vglo.cont = 1;
-	vglo.arg = NULL;
-	vglo.head = NULL;
-	vglo.fd = fd;
-	vglo.buffer = NULL;
-}
+	int index = 0;
 
-/**
- * check_input - checks if the file exists and if the file can
- * be opened
- *
- * @argc: argument count
- * @argv: argument vector
- * Return: file struct
- */
-FILE *check_input(int argc, char *argv[])
-{
-	FILE *fd;
-
-	if (argc == 1 || argc > 2)
+	instruction_t ops[] = {
+		{"push", push},
+		{"pall", pall},
+		{"pint", pint},
+		{"pop", pop},
+		{"swap", swap},
+		{"add", add},
+		{"nop", nop},
+		{"queue", stack_queue},
+		{"stack", stack_queue},
+		{"sub", sub},
+		{"div", divt},
+		{"mul", mul},
+		{"mod", mod},
+		{"pchar", pchar},
+		{"pstr", pstr},
+		{"rotl", rotl},
+		{"rotr", rotr},
+		{NULL, NULL}
+	};
+	while (ops[index].opcode)
 	{
-		dprintf(2, "USAGE: monty file\n");
-		exit(EXIT_FAILURE);
+		if (strcmp(opcode, ops[index].opcode) == 0)
+			return (ops[index].f);
+		index++;
 	}
-
-	fd = fopen(argv[1], "r");
-
-	if (fd == NULL)
-	{
-		dprintf(2, "Error: Can't open file %s\n", argv[1]);
-		exit(EXIT_FAILURE);
-	}
-
-	return (fd);
+	return (NULL);
 }
-
 /**
- * main - Entry point
- *
- * @argc: argument count
- * @argv: argument vector
- * Return: 0 on success
- */
-int main(int argc, char *argv[])
+* run_monty - Runs the opcode order
+* @buffer: line from file
+* @line_number: the line number
+*/
+void run_monty(char *buffer, unsigned int line_number)
 {
-	void (*f)(stack_t **stack, unsigned int line_number);
-	FILE *fd;
-	size_t size = 256;
-	ssize_t nlines = 0;
-	char *lines[2] = {NULL, NULL};
+	void (*f)(stack_t**, unsigned int);
 
-	fd = check_input(argc, argv);
-	start_vglo(fd);
-	nlines = getline(&vglo.buffer, &size, fd);
-	while (nlines != -1)
+	cmd = strtok(buffer, " \r\t\n");
+
+	if (cmd && cmd[0] != '#')
 	{
-		lines[0] = _strtoky(vglo.buffer, " \t\n");
-		if (lines[0] && lines[0][0] != '#')
+		f = get_func(cmd);
+		if (f != NULL)
 		{
-			f = get_opcodes(lines[0]);
-			if (!f)
-			{
-				dprintf(2, "L%u: ", vglo.cont);
-				dprintf(2, "unknown instruction %s\n", lines[0]);
-				free_vglo();
-				exit(EXIT_FAILURE);
-			}
-			vglo.arg = _strtoky(NULL, " \t\n");
-			f(&vglo.head, vglo.cont);
+			if (strcmp(cmd, "push") == 0)
+				value = strtok(NULL, " \r\t\n");
+			f(&h, line_number);
 		}
-		nlines = getline(&vglo.buffer, &size, fd);
-		vglo.cont++;
+		else
+		{
+			error_op(line_number, cmd);
+			if (buffer)
+				free(buffer);
+			if (h)
+				free_dlistint(h);
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+/**
+* main - passage point
+* @ac: argument count
+* @av: pointer of to arguments
+* Return: EXIT_SUCCESS on progress else EXIT_FAILURE
+*/
+int main(int ac, char **av)
+{
+	size_t status;
+	char *buffer = NULL;
+	unsigned int line_number = 0;
+
+	h = NULL;
+	value = NULL;
+	file = NULL;
+	mode = 0;
+	cmd = NULL;
+	if (ac != 2)
+	{
+		error_ac();
+		exit(EXIT_FAILURE);
 	}
 
-	free_vglo();
+	file = fopen(av[1], "r");
+	if (file == NULL)
+	{
+		error_fopen(av[1]);
+		exit(EXIT_FAILURE);
+	}
 
-	return (0);
+	while (getline(&buffer, &status, file) != EOF)
+	{
+		line_number++;
+		if (buffer[0] != '\n')
+			run_monty(buffer, line_number);
+	}
+	if (buffer)
+		free(buffer);
+	if (h)
+		free_dlistint(h);
+	fclose(file);
+	return (EXIT_SUCCESS);
 }
