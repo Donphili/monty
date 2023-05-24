@@ -5,69 +5,69 @@
  * @size: type of elements
  * Return: nothing
  */
-void *_calloc(unsigned int nmemb, unsigned int size)
-{
-	void *p = NULL;
-	unsigned int i;
 
-	if (nmemb == 0 || size == 0)
-	{
-		return (NULL);
-	}
-	p = malloc(nmemb * size);
-	if (p == NULL)
-	{
-		return (NULL);
-	}
-	for (i = 0; i < (nmemb * size); i++)
-	{
-		*((char *)(p) + i) = 0;
-	}
-	return (p);
+#define MAX_STACK_SIZE 100
+
+typedef struct {
+  int data[MAX_STACK_SIZE];
+  int top;
+} Stack;
+
+void push(Stack *stack, int value) {
+  if (stack->top == MAX_STACK_SIZE) {
+    fprintf(stderr, "Stack overflow\n");
+    exit(EXIT_FAILURE);
+  }
+
+  stack->data[stack->top++] = value;
 }
-/**
- * _realloc - change the size and copy the content
- * @ptr: malloc pointer to reallocate
- * @old_size: old number of bytes
- * @new_size: new number of Bytes
- * Return: nothing
- */
-void *_realloc(void *ptr, unsigned int old_size, unsigned int new_size)
-{
-	char *p = NULL;
-	unsigned int i;
 
-	if (new_size == old_size)
-		return (ptr);
-	if (ptr == NULL)
-	{
-		p = malloc(new_size);
-		if (!p)
-			return (NULL);
-		return (p);
-	}
-	if (new_size == 0 && ptr != NULL)
-	{
-		free(ptr);
-		return (NULL);
-	}
-	if (new_size > old_size)
-	{
-		p = malloc(new_size);
-		if (!p)
-			return (NULL);
-		for (i = 0; i < old_size; i++)
-			p[i] = *((char *)ptr + i);
-		free(ptr);
-	}
-	else
-	{
-		p = malloc(new_size);
-		if (!p)
-			return (NULL);
-		for (i = 0; i < new_size; i++)
-			p[i] = *((char *)ptr + i);
-		free(ptr);
-	}
-	return (p);
+void pall(Stack *stack) {
+  if (stack->top == 0) {
+    return;
+  }
+
+  for (int i = stack->top - 1; i >= 0; i--) {
+    printf("%d\n", stack->data[i]);
+  }
+}
+
+int main(int argc, char **argv) {
+  if (argc != 2) {
+    fprintf(stderr, "Usage: %s file\n", argv[0]);
+    exit(EXIT_FAILURE);
+  }
+
+  FILE *file = fopen(argv[1], "r");
+  if (file == NULL) {
+    fprintf(stderr, "Error: Can't open file %s\n", argv[1]);
+    exit(EXIT_FAILURE);
+  }
+
+  Stack stack;
+  stack.top = 0;
+
+  char line[100];
+  while (fgets(line, sizeof(line), file)) {
+    char *opcode = strtok(line, " ");
+
+    if (strcmp(opcode, "push") == 0) {
+      int value;
+      if (sscanf(line, "%d", &value) != 1) {
+        fprintf(stderr, "Error: Invalid push instruction\n");
+        exit(EXIT_FAILURE);
+      }
+
+      push(&stack, value);
+    } else if (strcmp(opcode, "pall") == 0) {
+      pall(&stack);
+    } else {
+      fprintf(stderr, "Error: Unknown opcode %s\n", opcode);
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  fclose(file);
+
+  return 0;
 }
